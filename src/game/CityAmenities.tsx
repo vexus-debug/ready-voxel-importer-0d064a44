@@ -219,8 +219,7 @@ function NearLights({ data }: { data: Amenities }) {
     refs.current.forEach((l, i) => {
       if (!l) return;
       const e = best[i];
-      l.visible = !!e;
-      if (!e) return;
+      if (!e) { l.intensity = 0; return; }
       const s = e[0];
       l.position.set(s.x, s.y, s.z);
       targets[i]!.position.set(s.x, s.y - 10, s.z);
@@ -234,7 +233,7 @@ function NearLights({ data }: { data: Amenities }) {
   return (
     <>
       {Array.from({ length: POOL }, (_, i) => (
-        <spotLight key={i} ref={(r) => { refs.current[i] = r; }} color="#ffe2b0" penumbra={0.6} decay={1.6} visible={false} />
+        <spotLight key={i} ref={(r) => { refs.current[i] = r; }} color="#ffe2b0" penumbra={0.6} decay={1.6} intensity={0} />
       ))}
     </>
   );
