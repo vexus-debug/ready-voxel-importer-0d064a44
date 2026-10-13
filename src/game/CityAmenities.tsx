@@ -28,7 +28,7 @@ function useParts() {
     const led = glow("#fff4dc", 3), cyan = glow("#33f0ff", 3), amber = glow("#ffb02e", 2.5);
     const red = glow("#ff2a2a", 4);
     const concrete = std("#9a9890", { metalness: 0.05, roughness: 0.9 });
-    const add = (color: string, opacity: number, map?: THREE.Texture) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, map, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const add = (color: string, opacity: number, map?: THREE.Texture) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, map: map ?? null, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const holo = add("#4ff6ff", 0.55);
     const beam = add("#fff1cf", 0.07);
     const pool = (() => {
