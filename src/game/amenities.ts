@@ -8,6 +8,7 @@ export interface Anchor { x: number; y: number; z: number; r: number; s: number 
 export interface Amenities {
   lights: Anchor[]; bollards: Anchor[]; rails: Anchor[]; ribs: Anchor[]; conduits: Anchor[];
   helipads: Anchor[]; masts: Anchor[]; dishes: Anchor[]; vents: Anchor[];
+  kiosks: Anchor[]; shelters: Anchor[]; dividers: Anchor[];
 }
 
 const ASPHALT = 27, ROAD_LINE = 31;
@@ -51,7 +52,7 @@ function scan() {
 }
 
 function finish(top: Int16Array, topId: Uint8Array, fl: Int16Array, flT: Uint8Array) {
-  const A: Amenities = { lights: [], bollards: [], rails: [], ribs: [], conduits: [], helipads: [], masts: [], dishes: [], vents: [] };
+  const A: Amenities = { lights: [], bollards: [], rails: [], ribs: [], conduits: [], helipads: [], masts: [], dishes: [], vents: [], kiosks: [], shelters: [], dividers: [] };
   const T = (u: number, v: number) => (u < 0 || v < 0 || u >= N || v >= N ? -1 : top[v * N + u]);
   const isStreet = (u: number, v: number) => {
     if (u < 0 || v < 0 || u >= N || v >= N) return false;
@@ -86,14 +87,28 @@ function finish(top: Int16Array, topId: Uint8Array, fl: Int16Array, flT: Uint8Ar
         const crossing = topId[(v + dz) * N + u + dx] === ROAD_LINE;
         if (!crossing && free(u, v, 6) && h(u, v) < 0.5) {
           A.lights.push({ x: wx(u), y: t + 1, z: wz(v), r: rot, s: 1 }); mark(u, v, 6);
+        } else if (!crossing && free(u, v, 9) && h(u + 3, v + 9) < 0.05) {
+          A.shelters.push({ x: wx(u), y: t + 1, z: wz(v), r: rot, s: 1 }); mark(u, v, 9);
         } else if (crossing && free(u, v, 1) && (u + v) % 2 === 0) {
           A.bollards.push({ x: wx(u) + dx * 0.3, y: t + 1, z: wz(v) + dz * 0.3, r: 0, s: 1 }); mark(u, v, 1);
         }
         break;
       }
     }
+    // --- plaza kiosks: wide flat pedestrian area away from streets
+    if (!isStreet(u, v) && t >= LF_GROUND - 1 && t <= LF_GROUND + 2 && h(u + 7, v + 1) < 0.012 && free(u, v, 8)) {
+      let ok = true;
+      for (let z = -3; z <= 3 && ok; z++) for (let x = -3; x <= 3; x++) if (T(u + x, v + z) !== t || isStreet(u + x, v + z)) { ok = false; break; }
+      if (ok) { A.kiosks.push({ x: wx(u), y: t + 1, z: wz(v), r: h(u, v + 2) * 6.28, s: 1 }); mark(u, v, 8); }
+    }
     // --- elevated road edges: street-like top above y 25 dropping off sharply
     const id = topId[i];
+    if (id === ROAD_LINE && t > 25 && t < 60) {
+      // centre median: orient along the longer street run through this cell
+      let rx = 0, rz = 0;
+      for (let k = 1; k <= 5; k++) { if (T(u + k, v) === t) rx++; if (T(u - k, v) === t) rx++; if (T(u, v + k) === t) rz++; if (T(u, v - k) === t) rz++; }
+      A.dividers.push({ x: wx(u), y: t + 1, z: wz(v), r: rx > rz ? Math.PI / 2 : 0, s: 1 });
+    }
     if ((id === ASPHALT || id === ROAD_LINE) && t > 25 && t < 60) {
       for (const [dx, dz] of dirs) {
         if (T(u + dx, v + dz) < t - 4) {
