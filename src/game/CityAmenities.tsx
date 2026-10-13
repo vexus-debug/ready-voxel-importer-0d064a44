@@ -4,6 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { onAmenities, type Amenities, type Anchor } from "./amenities";
 import { LF_X0, LF_Z0, LF_SIZE } from "./linefield";
+import { ui } from "./state";
 
 type Place = (a: Anchor, o: THREE.Object3D) => void;
 interface Part { geo: THREE.BufferGeometry; mat: THREE.Material; place: Place }
@@ -186,9 +187,55 @@ export function CityAmenities() {
   if (!data) return null;
   return (
     <group ref={grp}>
+      <NearLights data={data} />
       {(Object.keys(P) as (keyof Amenities)[]).flatMap((k) =>
         P[k].map((part, i) => <Inst key={`${k}${i}`} part={part} list={data[k]} />),
       )}
     </group>
+  );
+}
+
+// A small pool of real lights that follows the player: the nearest streetlights / helipad
+// floodlights get a true light so walls, roads and characters are lit, without hundreds of lights.
+const POOL = 6;
+function NearLights({ data }: { data: Amenities }) {
+  const refs = useRef<(THREE.SpotLight | null)[]>([]);
+  const targets = useMemo(() => Array.from({ length: POOL }, () => new THREE.Object3D()), []);
+  const srcs = useMemo(() => {
+    const s: { x: number; y: number; z: number; tx: number; tz: number; h: boolean }[] = [];
+    for (const a of data.lights) s.push({ x: a.x + Math.sin(a.r) * 1.45, y: a.y + 5.4, z: a.z + Math.cos(a.r) * 1.45, tx: 0, tz: 0, h: false });
+    for (const a of data.helipads) s.push({ x: a.x, y: a.y + 6, z: a.z, tx: 0, tz: 0, h: true });
+    return s;
+  }, [data]);
+  const tick = useRef(0);
+  useFrame(({ camera, scene }, dt) => {
+    tick.current -= dt;
+    const night = Math.sin(ui.time * Math.PI * 2) < 0.05;
+    if (tick.current > 0 && night) return;
+    tick.current = 0.25;
+    const p = camera.position;
+    const best = night ? srcs.map((s) => [s, (s.x - p.x) ** 2 + (s.z - p.z) ** 2 + (s.y - p.y) ** 2] as const)
+      .filter((e) => e[1] < 70 * 70).sort((a, b) => a[1] - b[1]).slice(0, POOL) : [];
+    refs.current.forEach((l, i) => {
+      if (!l) return;
+      const e = best[i];
+      l.visible = !!e;
+      if (!e) return;
+      const s = e[0];
+      l.position.set(s.x, s.y, s.z);
+      targets[i]!.position.set(s.x, s.y - 10, s.z);
+      if (!targets[i]!.parent) scene.add(targets[i]!);
+      l.target = targets[i]!;
+      l.angle = s.h ? 1.0 : 0.85;
+      l.distance = s.h ? 22 : 16;
+      l.intensity = s.h ? 60 : 40;
+    });
+  });
+  return (
+    <>
+      {Array.from({ length: POOL }, (_, i) => (
+        <spotLight key={i} ref={(r) => { refs.current[i] = r; }} color="#ffe2b0" penumbra={0.6} decay={1.6} visible={false} />
+      ))}
+    </>
   );
 }
