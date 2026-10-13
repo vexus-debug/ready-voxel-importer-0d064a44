@@ -22,6 +22,8 @@ export const ui = {
   photo: false,
   fly: false,
   hideHud: false,
+  kioskNear: false,
+  kioskOpen: false,
 };
 
 /** shared shader uniforms for drifting cloud shadows on the terrain */

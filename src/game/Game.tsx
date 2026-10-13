@@ -14,6 +14,7 @@ import { Population } from "./Population";
 import { loading, meshed, setLoading, subscribeLoading } from "./loading";
 import { chunkKey } from "./world";
 import { CityAmenities } from "./CityAmenities";
+import { nearKiosk } from "./kiosk";
 
 const RADIUS = isTouchDevice() ? 3 : 4;
 const SHADOW_RES = isTouchDevice() ? 1024 : 2048;
@@ -399,6 +400,11 @@ function Player({ zt }: { zt: React.MutableRefObject<ZombieTarget> }) {
         emit();
       }
       if (e.code === "KeyP" && ui.locked && !ui.dead) { ui.photo = !ui.photo; if (!ui.photo) ui.hideHud = false; emit(); }
+      if (e.code === "KeyE" && !ui.dead && (ui.kioskNear || ui.kioskOpen)) {
+        ui.kioskOpen = !ui.kioskOpen;
+        if (ui.kioskOpen && !touch.enabled) g.controls?.unlock?.();
+        emit();
+      }
       if (e.code === "KeyH" && ui.photo) { ui.hideHud = !ui.hideHud; emit(); }
     };
     const ku = (e: KeyboardEvent) => (keys.current[e.code] = false);
@@ -488,7 +494,7 @@ function Player({ zt }: { zt: React.MutableRefObject<ZombieTarget> }) {
     clock.current = s.clock.elapsedTime;
     const k = keys.current;
     if (!loading.ready) return; // frozen until the spawn area is built
-    const active = ui.locked && !ui.dead && !mapView.open;
+    const active = ui.locked && !ui.dead && !mapView.open && !ui.kioskOpen;
 
     // touch look
     if (touch.lookDX || touch.lookDY) {
@@ -522,6 +528,8 @@ function Player({ zt }: { zt: React.MutableRefObject<ZombieTarget> }) {
       fallStart.current = null;
       const uw = g.world.get(Math.floor(camera.position.x), Math.floor(camera.position.y), Math.floor(camera.position.z)) === B.WATER;
       if (uw !== ui.underwater) { ui.underwater = uw; emit(); }
+    const kn = nearKiosk(g.pos.x, g.pos.y, g.pos.z) >= 0;
+    if (kn !== ui.kioskNear) { ui.kioskNear = kn; if (!kn) ui.kioskOpen = false; emit(); }
       return;
     }
 

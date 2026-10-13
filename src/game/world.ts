@@ -6,6 +6,7 @@ import { buildTown, townAt, T_R, T_Y, AIRV } from "./town";
 import { buildCity, cityAt, C_R, C_Y, CAIR } from "./city";
 import { B, BLOCKS, ATLAS_COLS, isTransparent, isPassable, isNatural, isPlant, isEmissive } from "./blocks";
 import { lfColumn, onLinefieldTile, LF_X0, LF_Z0, LF_SIZE, LF_TS, LF_GROUND, LF_CX, LF_CZ } from "./linefield";
+import { propHit } from "./propCollide";
 
 export const CH = 16;
 export const H = 400; // tall enough for Linefield's tallest towers (build limit at y=395)
@@ -886,7 +887,7 @@ export function collides(world: World, p: THREE.Vector3, hw: number, h: number) 
     for (let y = Math.floor(p.y + e); y <= Math.floor(p.y + h - e); y++)
       for (let z = Math.floor(p.z - hw + e); z <= Math.floor(p.z + hw - e); z++)
         if (!isPassable(world.get(x, y, z))) return true;
-  return false;
+  return propHit(p.x - hw, p.y, p.z - hw, p.x + hw, p.y + h, p.z + hw);
 }
 
 export function moveEntity(world: World, p: THREE.Vector3, v: THREE.Vector3, dt: number, hw: number, h: number, canStep = false) {
