@@ -2,6 +2,7 @@ import { ATLAS_COLS, HOTBAR } from "./blocks";
 import { MiniMap, RealmMap } from "./Map";
 import { touch, isTouchDevice } from "./touch";
 import { emit, ui as uiState } from "./state";
+import { destinations } from "./kiosk";
 import { getGame, newWorld, respawn, saveGame, useUI, MAX_HEALTH } from "./state";
 
 function Icon({ tile, url, size = 36 }: { tile: number; url: string; size?: number }) {
@@ -95,7 +96,7 @@ export function HUD() {
       </div>
 
       {/* pause menu */}
-      {!ui.locked && !ui.dead && (
+      {!ui.locked && !ui.dead && !ui.kioskOpen && (
         <div className="pointer-events-auto absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm">
           <div className="w-[min(92vw,460px)] rounded-lg border border-border bg-card p-6 text-center text-card-foreground">
             <h1 className="text-5xl leading-none tracking-wide text-primary">VOXELCRAFT</h1>
@@ -148,8 +149,55 @@ export function HUD() {
           </button>
         </div>
       )}
+      {ui.kioskNear && !ui.kioskOpen && ui.locked && !ui.dead && (
+        <button
+          onPointerDown={() => { uiState.kioskOpen = true; emit(); }}
+          className="pointer-events-auto absolute left-1/2 top-[60%] -translate-x-1/2 rounded-md border border-primary/60 bg-background/70 px-4 py-2 text-lg"
+        >
+          {isTouchDevice() ? "Tap" : "Press E"} · City Directory
+        </button>
+      )}
       <MiniMap />
       <RealmMap />
+      {ui.kioskOpen && <KioskPanel />}
+    </div>
+  );
+}
+
+function KioskPanel() {
+  const g = getGame();
+  const list = destinations(g.pos.x, g.pos.z);
+  const close = () => {
+    uiState.kioskOpen = false;
+    emit();
+    if (!touch.enabled) g.controls?.lock();
+  };
+  const go = (x: number, y: number, z: number) => {
+    g.pos.set(x, y + 0.05, z);
+    g.vel.set(0, 0, 0);
+    close();
+  };
+  return (
+    <div className="pointer-events-auto absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+      <div className="max-h-[90%] w-[min(92vw,480px)] overflow-y-auto rounded-lg border border-primary/50 bg-card/90 p-5 text-card-foreground">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-3xl leading-none text-primary">Linefield Directory</h2>
+          <button onClick={close} className="text-xl text-muted-foreground hover:text-foreground">✕</button>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2 text-base text-muted-foreground">
+          <span>X {Math.round(g.pos.x)}</span><span>Z {Math.round(g.pos.z)}</span><span>Alt {Math.round(g.pos.y)} m</span>
+        </div>
+        <p className="mt-3 text-lg">Quick travel</p>
+        <div className="mt-1 flex flex-col gap-1">
+          {list.map((d) => (
+            <button key={d.name} onClick={() => go(d.x, d.y, d.z)}
+              className="flex justify-between rounded border border-border px-3 py-1.5 text-left text-lg hover:bg-accent">
+              <span>{d.name}</span><span className="text-muted-foreground">{Math.round(d.d)} m</span>
+            </button>
+          ))}
+          {!list.length && <span className="text-muted-foreground">No destinations found yet.</span>}
+        </div>
+      </div>
     </div>
   );
 }
